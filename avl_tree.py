@@ -11,6 +11,9 @@ Original file is located at
 from IPython.display import Image
 
 from graphviz import Digraph
+from IPython.display import display, Image
+import os
+import platform
 
 class NodoPelicula:
     def __init__(self, titulo, año, worldwide_earnings, domestic_earnings, foreign_earnings, domestic_percent, foreign_percent):
@@ -67,7 +70,8 @@ class AVLTree:
         if not root:
             return NodoPelicula(titulo, año, worldwide_earnings, domestic_earnings, foreign_earnings, domestic_percent, foreign_percent)
 
-        if titulo < root.titulo:
+        # Comparación insensible a mayúsculas
+        if titulo.lower() < root.titulo.lower():
             root.left = self.insert(root.left, titulo, año, worldwide_earnings, domestic_earnings, foreign_earnings, domestic_percent, foreign_percent)
         else:
             root.right = self.insert(root.right, titulo, año, worldwide_earnings, domestic_earnings, foreign_earnings, domestic_percent, foreign_percent)
@@ -76,17 +80,17 @@ class AVLTree:
 
         balance = self.get_balance(root)
 
-        if balance > 1 and titulo < root.left.titulo:
+        if balance > 1 and titulo.lower() < root.left.titulo.lower():
             return self.rotate_right(root)
 
-        if balance < -1 and titulo > root.right.titulo:
+        if balance < -1 and titulo.lower() > root.right.titulo.lower():
             return self.rotate_left(root)
 
-        if balance > 1 and titulo > root.left.titulo:
+        if balance > 1 and titulo.lower() > root.left.titulo.lower():
             root.left = self.rotate_left(root.left)
             return self.rotate_right(root)
 
-        if balance < -1 and titulo < root.right.titulo:
+        if balance < -1 and titulo.lower() < root.right.titulo.lower():
             root.right = self.rotate_right(root.right)
             return self.rotate_left(root)
 
@@ -105,11 +109,14 @@ class AVLTree:
 
         def add_node(nodo):
             if nodo:
-                dot.node(nodo.titulo, f"{nodo.titulo} ({nodo.año})")
+                safe_title = nodo.titulo.replace(" ", "_").replace(":", "_")  # Reemplaza espacios y dos puntos
+                dot.node(safe_title, f"{nodo.titulo} ({nodo.año})")
                 if nodo.left:
-                    dot.edge(nodo.titulo, nodo.left.titulo)
+                    safe_left = nodo.left.titulo.replace(" ", "_").replace(":", "_")
+                    dot.edge(safe_title, safe_left)
                 if nodo.right:
-                    dot.edge(nodo.titulo, nodo.right.titulo)
+                    safe_right = nodo.right.titulo.replace(" ", "_").replace(":", "_")
+                    dot.edge(safe_title, safe_right)
                 add_node(nodo.left)
                 add_node(nodo.right)
 
@@ -120,11 +127,68 @@ class AVLTree:
         dot = self.visualize_tree(self.root)
         dot.render(filename, format='png', cleanup=True)
 
-# Ejemplo de uso
-avl = AVLTree()
-avl.root = avl.insert(avl.root, "Mission: Impossible II", 2000, 546388108, 215409889, 330978219, 39.4, 60.6)
+    def show_tree(self, filename='avl_tree'):
+        self.save_tree(filename)
+        # Mostrar la imagen en la consola
+        display(Image(f"{filename}.png"))
 
-# Visualiza y guarda el árbol
-dot = avl.visualize_tree(avl.root)
-dot.render('avl_tree', format='png', cleanup=True)
-Image('avl_tree.png')
+    # Implementación del método de búsqueda
+    def search(self, root, titulo):
+        if root is None or root.titulo.lower() == titulo.lower():
+            return root
+
+        if titulo.lower() < root.titulo.lower():
+            return self.search(root.left, titulo)
+
+        return self.search(root.right, titulo)
+
+def menu():
+    avl = AVLTree()
+
+    while True:
+        print("\n--- Menú AVL de Películas ---")
+        print("1. Insertar película")
+        print("2. Buscar película")
+        print("3. Mostrar árbol (Pre-orden)")
+        print("4. Guardar árbol")
+        print("5. Salir")
+
+        opcion = input("Elige una opción: ")
+
+        if opcion == '1':
+            titulo = input("Título: ")
+            año = int(input("Año: "))
+            worldwide_earnings = float(input("Recaudación global: "))
+            domestic_earnings = float(input("Recaudación nacional: "))
+            foreign_earnings = float(input("Recaudación extranjera: "))
+            domestic_percent = float(input("Porcentaje nacional: "))
+            foreign_percent = float(input("Porcentaje extranjero: "))
+
+            avl.root = avl.insert(avl.root, titulo, año, worldwide_earnings, domestic_earnings, foreign_earnings, domestic_percent, foreign_percent)
+
+        elif opcion == '2':
+            titulo = input("Título de la película a buscar: ")
+            nodo = avl.search(avl.root, titulo)
+            if nodo:
+                print(f"Película encontrada: {nodo.titulo} ({nodo.año})")
+            else:
+                print("Película no encontrada")
+
+        elif opcion == '3':
+            print("Mostrando el árbol AVL:")
+            avl.show_tree()
+
+        elif opcion == '4':
+            avl.save_tree()
+            print("Árbol guardado como imagen PNG.")
+
+        elif opcion == '5':
+            print("Saliendo del programa...")
+            break
+
+        else:
+            print("Opción no válida. Intenta de nuevo.")
+
+# Ejecutar el menú
+menu()
+
