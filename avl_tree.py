@@ -7,7 +7,8 @@ Original file is located at
     https://colab.research.google.com/drive/1VVexKJKla6rG1yedGcRNbwt1uzqpRco6
 """
 
-pip install graphviz
+!pip install graphviz
+from IPython.display import Image
 
 from graphviz import Digraph
 
@@ -94,32 +95,36 @@ class AVLTree:
     def pre_order(self, root):
         if not root:
             return
-        print(f"Película: {root.titulo}, Año: {root.año}, Ganancias Totales: {root.worldwide_earnings}, Nacionales: {root.domestic_earnings}, Internacionales: {root.foreign_earnings}")
+
+        print(f"{root.titulo} ({root.año})")
         self.pre_order(root.left)
         self.pre_order(root.right)
 
-    def visualize(self, filename='avl_tree'):
+    def visualize_tree(self, root):
         dot = Digraph()
-        self._add_edges(dot, self.root)
-        dot.render(filename, format='png', cleanup=True)
 
-    def _add_edges(self, dot, node):
-        if node:
-            if node.left:
-                dot.node(str(node.titulo), f'{node.titulo}')
-                dot.node(str(node.left.titulo), f'{node.left.titulo}')
-                dot.edge(str(node.titulo), str(node.left.titulo))
-                self._add_edges(dot, node.left)
-            if node.right:
-                dot.node(str(node.titulo), f'{node.titulo}')
-                dot.node(str(node.right.titulo), f'{node.right.titulo}')
-                dot.edge(str(node.titulo), str(node.right.titulo))
-                self._add_edges(dot, node.right)
+        def add_node(nodo):
+            if nodo:
+                dot.node(nodo.titulo, f"{nodo.titulo} ({nodo.año})")
+                if nodo.left:
+                    dot.edge(nodo.titulo, nodo.left.titulo)
+                if nodo.right:
+                    dot.edge(nodo.titulo, nodo.right.titulo)
+                add_node(nodo.left)
+                add_node(nodo.right)
+
+        add_node(root)
+        return dot
+
+    def save_tree(self, filename='avl_tree'):
+        dot = self.visualize_tree(self.root)
+        dot.render(filename, format='png', cleanup=True)
 
 # Ejemplo de uso
 avl = AVLTree()
-avl.root = None
 avl.root = avl.insert(avl.root, "Mission: Impossible II", 2000, 546388108, 215409889, 330978219, 39.4, 60.6)
 
-avl.pre_order(avl.root)
-avl.visualize('avl_tree')
+# Visualiza y guarda el árbol
+dot = avl.visualize_tree(avl.root)
+dot.render('avl_tree', format='png', cleanup=True)
+Image('avl_tree.png')
