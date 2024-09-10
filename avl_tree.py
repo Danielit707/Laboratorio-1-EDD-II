@@ -70,7 +70,6 @@ class AVLTree:
         if not root:
             return NodoPelicula(titulo, año, worldwide_earnings, domestic_earnings, foreign_earnings, domestic_percent, foreign_percent)
 
-        # Comparación insensible a mayúsculas
         if titulo.lower() < root.titulo.lower():
             root.left = self.insert(root.left, titulo, año, worldwide_earnings, domestic_earnings, foreign_earnings, domestic_percent, foreign_percent)
         else:
@@ -96,6 +95,93 @@ class AVLTree:
 
         return root
 
+    # Método para eliminar un nodo
+    def delete(self, root, titulo):
+        if not root:
+            return root
+
+        if titulo.lower() < root.titulo.lower():
+            root.left = self.delete(root.left, titulo)
+        elif titulo.lower() > root.titulo.lower():
+            root.right = self.delete(root.right, titulo)
+        else:
+            if root.left is None:
+                return root.right
+            elif root.right is None:
+                return root.left
+
+            temp = self.get_min_value_node(root.right)
+            root.titulo = temp.titulo
+            root.año = temp.año
+            root.worldwide_earnings = temp.worldwide_earnings
+            root.domestic_earnings = temp.domestic_earnings
+            root.foreign_earnings = temp.foreign_earnings
+            root.domestic_percent = temp.domestic_percent
+            root.foreign_percent = temp.foreign_percent
+
+            root.right = self.delete(root.right, temp.titulo)
+
+        root.height = 1 + max(self.get_height(root.left), self.get_height(root.right))
+
+        balance = self.get_balance(root)
+
+        if balance > 1 and self.get_balance(root.left) >= 0:
+            return self.rotate_right(root)
+
+        if balance > 1 and self.get_balance(root.left) < 0:
+            root.left = self.rotate_left(root.left)
+            return self.rotate_right(root)
+
+        if balance < -1 and self.get_balance(root.right) <= 0:
+            return self.rotate_left(root)
+
+        if balance < -1 and self.get_balance(root.right) > 0:
+            root.right = self.rotate_right(root.right)
+            return self.rotate_left(root)
+
+        return root
+
+    def get_min_value_node(self, root):
+        if root is None or root.left is None:
+            return root
+        return self.get_min_value_node(root.left)
+
+    # Buscar por criterios (año, porcentajes, ganancias)
+    def search_by_criteria(self, root, year=None, foreign_earnings_threshold=None, compare_percents=False):
+        if not root:
+            return []
+
+        result = []
+
+        if year is not None and root.año == year:
+            if compare_percents and root.domestic_percent < root.foreign_percent:
+                if foreign_earnings_threshold is not None and root.foreign_earnings >= foreign_earnings_threshold:
+                    result.append(root)
+        else:
+            if compare_percents and root.domestic_percent < root.foreign_percent:
+                if foreign_earnings_threshold is not None and root.foreign_earnings >= foreign_earnings_threshold:
+                    result.append(root)
+
+        result.extend(self.search_by_criteria(root.left, year, foreign_earnings_threshold, compare_percents))
+        result.extend(self.search_by_criteria(root.right, year, foreign_earnings_threshold, compare_percents))
+
+        return result
+
+    # Recorrido por niveles
+    def level_order(self, root):
+        if not root:
+            return
+
+        queue = [root]
+        while queue:
+            current = queue.pop(0)
+            print(current.titulo)
+
+            if current.left:
+                queue.append(current.left)
+            if current.right:
+                queue.append(current.right)
+
     def pre_order(self, root):
         if not root:
             return
@@ -109,7 +195,7 @@ class AVLTree:
 
         def add_node(nodo):
             if nodo:
-                safe_title = nodo.titulo.replace(" ", "_").replace(":", "_")  # Reemplaza espacios y dos puntos
+                safe_title = nodo.titulo.replace(" ", "_").replace(":", "_")
                 dot.node(safe_title, f"{nodo.titulo} ({nodo.año})")
                 if nodo.left:
                     safe_left = nodo.left.titulo.replace(" ", "_").replace(":", "_")
@@ -129,10 +215,8 @@ class AVLTree:
 
     def show_tree(self, filename='avl_tree'):
         self.save_tree(filename)
-        # Mostrar la imagen en la consola
         display(Image(f"{filename}.png"))
 
-    # Implementación del método de búsqueda
     def search(self, root, titulo):
         if root is None or root.titulo.lower() == titulo.lower():
             return root
@@ -142,16 +226,119 @@ class AVLTree:
 
         return self.search(root.right, titulo)
 
+    # Función para encontrar el nodo con más ganancias extranjeras
+    def find_max_foreign_earnings(self, root):
+        if not root:
+            return None
+        max_node = root
+        if root.left:
+            left_max = self.find_max_foreign_earnings(root.left)
+            if left_max and left_max.foreign_earnings > max_node.foreign_earnings:
+                max_node = left_max
+        if root.right:
+            right_max = self.find_max_foreign_earnings(root.right)
+            if right_max and right_max.foreign_earnings > max_node.foreign_earnings:
+                max_node = right_max
+        return max_node
+
+    # Función para eliminar el nodo con más ganancias extranjeras
+    def delete_max_foreign_earnings(self, root):
+        max_node = self.find_max_foreign_earnings(root)
+        if max_node:
+            print(f"Eliminando la película con más ganancias extranjeras: {max_node.titulo}")
+            return self.delete(root, max_node.titulo)
+        print("No se encontró una película para eliminar.")
+        return root
+
+    # Función para encontrar el nodo con menos ganancias domésticas
+    def find_min_domestic_earnings(self, root):
+        if not root:
+            return None
+        min_node = root
+        if root.left:
+            left_min = self.find_min_domestic_earnings(root.left)
+            if left_min and left_min.domestic_earnings < min_node.domestic_earnings:
+                min_node = left_min
+        if root.right:
+            right_min = self.find_min_domestic_earnings(root.right)
+            if right_min and right_min.domestic_earnings < min_node.domestic_earnings:
+                min_node = right_min
+        return min_node
+
+    # Función para eliminar el nodo con menos ganancias domésticas
+    def delete_min_domestic_earnings(self, root):
+        min_node = self.find_min_domestic_earnings(root)
+        if min_node:
+            print(f"Eliminando la película con menos ganancias domésticas: {min_node.titulo}")
+            return self.delete(root, min_node.titulo)
+        print("No se encontró una película para eliminar.")
+        return root
+
+    # Función para encontrar el nodo con el mayor porcentaje de ganancias extranjeras
+    def find_max_foreign_percent(self, root):
+        if not root:
+            return None
+        max_node = root
+        if root.left:
+            left_max = self.find_max_foreign_percent(root.left)
+            if left_max and left_max.foreign_percent > max_node.foreign_percent:
+                max_node = left_max
+        if root.right:
+            right_max = self.find_max_foreign_percent(root.right)
+            if right_max and right_max.foreign_percent > max_node.foreign_percent:
+                max_node = right_max
+        return max_node
+
+    # Función para eliminar el nodo con mayor porcentaje de ganancias extranjeras
+    def delete_max_foreign_percent(self, root):
+        max_node = self.find_max_foreign_percent(root)
+        if max_node:
+            print(f"Eliminando la película con mayor porcentaje de ganancias extranjeras: {max_node.titulo}")
+            return self.delete(root, max_node.titulo)
+        print("No se encontró una película para eliminar.")
+        return root
+
+    # Función para encontrar el nodo con el menor porcentaje de ganancias domésticas
+    def find_min_domestic_percent(self, root):
+        if not root:
+            return None
+        min_node = root
+        if root.left:
+            left_min = self.find_min_domestic_percent(root.left)
+            if left_min and left_min.domestic_percent < min_node.domestic_percent:
+                min_node = left_min
+        if root.right:
+            right_min = self.find_min_domestic_percent(root.right)
+            if right_min and right_min.domestic_percent < min_node.domestic_percent:
+                min_node = right_min
+        return min_node
+
+    # Función para eliminar el nodo con menor porcentaje de ganancias domésticas
+    def delete_min_domestic_percent(self, root):
+        min_node = self.find_min_domestic_percent(root)
+        if min_node:
+            print(f"Eliminando la película con menor porcentaje de ganancias domésticas: {min_node.titulo}")
+            return self.delete(root, min_node.titulo)
+        print("No se encontró una película para eliminar.")
+        return root
+
 def menu():
     avl = AVLTree()
 
     while True:
         print("\n--- Menú AVL de Películas ---")
         print("1. Insertar película")
-        print("2. Buscar película")
-        print("3. Mostrar árbol (Pre-orden)")
-        print("4. Guardar árbol")
-        print("5. Salir")
+        print("2. Buscar película por título")
+        print("3. Eliminar película")
+        print("4. Buscar películas por criterios")
+        print("5. Mostrar recorrido por niveles")
+        print("6. Mostrar árbol")
+        print("7. Guardar árbol")
+        print("8. Eliminar película con más ganancias extranjeras")
+        print("9. Eliminar película con menos ganancias domésticas")
+        print("10. Eliminar película con mayor porcentaje de ganancias extranjeras")
+        print("11. Eliminar película con menor porcentaje de ganancias domésticas")
+        print("12. Salir")
 
         opcion = input("Elige una opción: ")
 
@@ -165,30 +352,62 @@ def menu():
             foreign_percent = float(input("Porcentaje extranjero: "))
 
             avl.root = avl.insert(avl.root, titulo, año, worldwide_earnings, domestic_earnings, foreign_earnings, domestic_percent, foreign_percent)
+            print("Película insertada.")
 
         elif opcion == '2':
-            titulo = input("Título de la película a buscar: ")
+            titulo = input("Introduce el título a buscar: ")
             nodo = avl.search(avl.root, titulo)
             if nodo:
-                print(f"Película encontrada: {nodo.titulo} ({nodo.año})")
+                print(f"Película encontrada: {nodo.titulo}, Año: {nodo.año}")
             else:
-                print("Película no encontrada")
+                print("Película no encontrada.")
 
         elif opcion == '3':
-            print("Mostrando el árbol AVL:")
-            avl.show_tree()
+            titulo = input("Introduce el título de la película a eliminar: ")
+            avl.root = avl.delete(avl.root, titulo)
+            print("Película eliminada.")
 
         elif opcion == '4':
-            avl.save_tree()
-            print("Árbol guardado como imagen PNG.")
+            year = input("Introduce el año (o presiona enter para omitir): ")
+            foreign_earnings_threshold = input("Introduce el umbral de ganancias extranjeras (o presiona enter para omitir): ")
+            compare_percents = input("¿Comparar porcentajes (S/N)? ").lower() == 's'
+
+            year = int(year) if year else None
+            foreign_earnings_threshold = float(foreign_earnings_threshold) if foreign_earnings_threshold else None
+
+            resultados = avl.search_by_criteria(avl.root, year, foreign_earnings_threshold, compare_percents)
+            for resultado in resultados:
+                print(f"{resultado.titulo}, Año: {resultado.año}, Recaudación extranjera: {resultado.foreign_earnings}")
 
         elif opcion == '5':
-            print("Saliendo del programa...")
+            print("Recorrido por niveles del árbol:")
+            avl.level_order(avl.root)
+
+        elif opcion == '6':
+            avl.show_tree()
+
+        elif opcion == '7':
+            avl.save_tree()
+            print("Árbol guardado como imagen.")
+
+        elif opcion == '8':
+            avl.root = avl.delete_max_foreign_earnings(avl.root)
+
+        elif opcion == '9':
+            avl.root = avl.delete_min_domestic_earnings(avl.root)
+
+        elif opcion == '10':
+            avl.root = avl.delete_max_foreign_percent(avl.root)
+
+        elif opcion == '11':
+            avl.root = avl.delete_min_domestic_percent(avl.root)
+
+        elif opcion == '12':
+            print("Saliendo...")
             break
 
         else:
-            print("Opción no válida. Intenta de nuevo.")
+            print("Opción no válida, intenta de nuevo.")
 
-# Ejecutar el menú
+avl = AVLTree()
 menu()
-
