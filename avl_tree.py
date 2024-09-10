@@ -147,25 +147,32 @@ class AVLTree:
         return self.get_min_value_node(root.left)
 
     # Buscar por criterios (año, porcentajes, ganancias)
+        # Buscar por criterios (año, porcentajes, ganancias)
     def search_by_criteria(self, root, year=None, foreign_earnings_threshold=None, compare_percents=False):
         if not root:
             return []
 
         result = []
 
-        if year is not None and root.año == year:
-            if compare_percents and root.domestic_percent < root.foreign_percent:
-                if foreign_earnings_threshold is not None and root.foreign_earnings >= foreign_earnings_threshold:
-                    result.append(root)
-        else:
-            if compare_percents and root.domestic_percent < root.foreign_percent:
-                if foreign_earnings_threshold is not None and root.foreign_earnings >= foreign_earnings_threshold:
+        # Filtrar según el año, si se especifica
+        if year is None or root.año == year:
+            # Filtrar si se especifica comparación de porcentajes
+            if compare_percents:
+                if root.domestic_percent < root.foreign_percent:
+                    # Si se especifica umbral de recaudación extranjera
+                    if foreign_earnings_threshold is None or root.foreign_earnings >= foreign_earnings_threshold:
+                        result.append(root)
+            else:
+                # Si no se especifica la comparación de porcentajes, solo aplicar umbral de recaudación
+                if foreign_earnings_threshold is None or root.foreign_earnings >= foreign_earnings_threshold:
                     result.append(root)
 
+        # Recursión en el subárbol izquierdo y derecho
         result.extend(self.search_by_criteria(root.left, year, foreign_earnings_threshold, compare_percents))
         result.extend(self.search_by_criteria(root.right, year, foreign_earnings_threshold, compare_percents))
 
         return result
+
 
     # Recorrido por niveles
     def level_order(self, root):
@@ -191,31 +198,44 @@ class AVLTree:
         self.pre_order(root.right)
 
     def visualize_tree(self, root):
-        dot = Digraph()
+      dot = Digraph(format='png')
 
-        def add_node(nodo):
-            if nodo:
-                safe_title = nodo.titulo.replace(" ", "_").replace(":", "_")
-                dot.node(safe_title, f"{nodo.titulo} ({nodo.año})")
-                if nodo.left:
-                    safe_left = nodo.left.titulo.replace(" ", "_").replace(":", "_")
-                    dot.edge(safe_title, safe_left)
-                if nodo.right:
-                    safe_right = nodo.right.titulo.replace(" ", "_").replace(":", "_")
-                    dot.edge(safe_title, safe_right)
-                add_node(nodo.left)
-                add_node(nodo.right)
+      def add_edges(nodo):
+          if nodo:
+              safe_title = nodo.titulo.replace(" ", "_").replace(":", "_")
+              dot.node(safe_title, f"{nodo.titulo} ({nodo.año})")
+              if nodo.left:
+                  safe_left = nodo.left.titulo.replace(" ", "_").replace(":", "_")
+                  dot.node(safe_left, f"{nodo.left.titulo} ({nodo.left.año})")
+                  dot.edge(safe_title, safe_left)
+                  add_edges(nodo.left)
+              if nodo.right:
+                  safe_right = nodo.right.titulo.replace(" ", "_").replace(":", "_")
+                  dot.node(safe_right, f"{nodo.right.titulo} ({nodo.right.año})")
+                  dot.edge(safe_title, safe_right)
+                  add_edges(nodo.right)
 
-        add_node(root)
-        return dot
+      add_edges(root)
+      return dot
 
     def save_tree(self, filename='avl_tree'):
-        dot = self.visualize_tree(self.root)
-        dot.render(filename, format='png', cleanup=True)
+      dot = self.visualize_tree(self.root)
+      dot.render(filename, format='png', cleanup=False)
+      print(f"Archivo guardado como {filename}.png")
+
 
     def show_tree(self, filename='avl_tree'):
-        self.save_tree(filename)
-        display(Image(f"{filename}.png"))
+      self.save_tree(filename)
+      # Ajuste para asegurar que la imagen sea visible y de un tamaño adecuado
+      try:
+          image_path = f"{filename}.png"
+          if os.path.exists(image_path):
+              display(Image(image_path, width=600))  # Ajustar el tamaño si es necesario
+          else:
+              print("No se encontró el archivo de imagen.")
+      except Exception as e:
+          print(f"Error mostrando la imagen: {e}")
+
 
     def search(self, root, titulo):
         if root is None or root.titulo.lower() == titulo.lower():
@@ -323,7 +343,7 @@ class AVLTree:
         return root
 
 def menu():
-    avl = AVLTree()
+
 
     while True:
         print("\n--- Menú AVL de Películas ---")
@@ -410,4 +430,16 @@ def menu():
             print("Opción no válida, intenta de nuevo.")
 
 avl = AVLTree()
+peliculas = [
+    {"titulo": "Mission: Impossible II", "año": 2000, "recaudacion_global": 546388108, "recaudacion_domestica": 215409889, "recaudacion_extranjera": 330978219, "porcentaje_domestico": 39.4, "porcentaje_extranjero": 60.6},
+    {"titulo": "Gladiator", "año": 2000, "recaudacion_global": 460583960, "recaudacion_domestica": 187705427, "recaudacion_extranjera": 272878533, "porcentaje_domestico": 40.8, "porcentaje_extranjero": 59.2},
+    {"titulo": "Cast Away", "año": 2000, "recaudacion_global": 429632142, "recaudacion_domestica": 233632142, "recaudacion_extranjera": 196000000, "porcentaje_domestico": 54.4, "porcentaje_extranjero": 45.6},
+    {"titulo": "What Women Want", "año": 2000, "recaudacion_global": 374111707, "recaudacion_domestica": 182811707, "recaudacion_extranjera": 191300000, "porcentaje_domestico": 51.1, "porcentaje_extranjero": 48.9},
+    {"titulo": "Dinosaur", "año": 2000, "recaudacion_global": 349822765, "recaudacion_domestica": 137748063, "recaudacion_extranjera": 212074702, "porcentaje_domestico": 39.4, "porcentaje_extranjero": 60.6},
+]
+
+for pelicula in peliculas:
+    avl.root = avl.insert(avl.root, pelicula["titulo"], pelicula["año"], pelicula["recaudacion_global"], pelicula["recaudacion_domestica"], pelicula["recaudacion_extranjera"], pelicula["porcentaje_domestico"], pelicula["porcentaje_extranjero"])
+    print(f'Insertada: {pelicula["titulo"]}')
 menu()
+
